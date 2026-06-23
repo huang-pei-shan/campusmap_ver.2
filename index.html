@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>校園尋路慈大空間查詢平台</title>
+    <link rel="icon" href="TCUMAP/logo.png?v=1" type="image/png">
+    <link rel="shortcut icon" href="TCUMAP/logo.png?v=1" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        /* --- 核心變數 --- */
+        :root {
+            --tech-blue: #007bff;
+            --neon-glow: rgba(0, 123, 255, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --bg-color: #f0f2f5;
+            --text-main: #2c3e50;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --table-head: #f8fafc;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-main: #e2e8f0;
+            --glass-bg: rgba(30, 30, 30, 0.9);
+            --card-bg: #1e1e1e;
+            --border-color: #333;
+            --table-head: #252525;
+            --neon-glow: rgba(255, 140, 0, 0.6);
+            --tech-blue: #ff8400; 
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            margin: 0; padding: 0; 
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- 引導教學 CSS --- */
+        #tour-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9998; display: none; pointer-events: auto; 
+        }
+        .tour-spotlight {
+            position: absolute; z-index: 9999; border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none; 
+        }
+        #tour-popover {
+            position: absolute; z-index: 10000; width: 280px; background: var(--card-bg);
+            border: 1px solid var(--tech-blue); border-radius: 12px;
+            padding: 20px; pointer-events: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #tour-popover h3 { margin: 0 0 10px 0; color: var(--tech-blue); font-size: 1.1rem; }
+        #tour-popover p { margin: 0 0 20px 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-main); }
+        .tour-footer { display: flex; justify-content: space-between; align-items: center; }
+        .tour-step-info { font-size: 0.75rem; color: #718096; }
+        .tour-btn {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-main); cursor: pointer;
+            font-size: 0.85rem; font-weight: 600; transition: 0.2s;
+        }
+        .tour-btn:hover { background: var(--table-head); }
+        .tour-btn-next { background: var(--tech-blue); color: #fff; border: none; }
+        .tour-btn-next:hover { opacity: 0.9; }
+
+        /* --- 頁面樣式 --- */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--tech-blue); }
+
+        .main-content-wrapper { max-width: 100%; padding: 0 20px; margin: 20px auto; }
+
+        .header-bar { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 20px; padding: 15px;
+            background: var(--glass-bg); backdrop-filter: blur(10px);
+            border-radius: 12px; border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .header-bar h1 { display: flex; align-items: center; gap: 12px; font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; }
+        .header-logo { height: 40px; width: auto; object-fit: contain; }
+        
+        .stat-tag { 
+            background: var(--card-bg); padding: 6px 14px; border-radius: 8px; 
+            font-size: 0.85rem; border: 1px solid var(--border-color);
+            color: var(--text-main); display: flex; align-items: center; justify-content: center;
+            white-space: nowrap;
+        }
+
+        .icon-btn-circle {
+            cursor: pointer; font-size: 1.1rem; width: 42px; height: 42px;
+            border-radius: 50%; background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .icon-btn-circle:hover { border-color: var(--tech-blue); box-shadow: 0 0 12px var(--neon-glow); transform: scale(1.1); }
+
+        .search-bar { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .search-bar input, .search-bar select { 
+            padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); 
+            background: var(--card-bg); color: var(--text-main); outline: none; transition: all 0.3s;
+        }
+        .search-bar input:focus { border-color: var(--tech-blue); box-shadow: 0 0 0 3px var(--neon-glow); }
+        
+        .search-bar button:not(.filter-toggle-btn) {
+            padding: 10px 20px; border-radius: 8px; border: none;
+            background: linear-gradient(135deg, var(--tech-blue) 0%, #b300ad 100%);
+            color: white; cursor: pointer; font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,86,179,0.3); transition: 0.3s;
+        }
+
+        .table-container { 
+            width: 100%; overflow-x: auto; background: var(--card-bg); 
+            border-radius: 12px; border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+        }
+        table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
+        
+        th, td { text-align: center; vertical-align: middle; padding: 15px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        th:first-child, td:first-child { padding-left: 60px; }
+
+        th { 
+            background: var(--table-head); color: var(--text-main); font-weight: 600; text-transform: uppercase;
+            font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid var(--border-color);
+            cursor: pointer; position: relative; transition: background 0.2s;
+        }
+
+        .sort-indicator { display: inline-flex; flex-direction: column; vertical-align: 4px; margin-left: 6px; line-height: 0.8; gap: 3px; transform: translateY(-2px);}
+        .sort-arrow { color: #cbd5e0; font-size: 0.4rem; }
+        .active-asc .arrow-up { color: var(--tech-blue); }
+        .active-desc .arrow-down { color: var(--tech-blue); }
+
+        td { border-bottom: 1px solid var(--border-color); font-size: 0.9rem; color: var(--text-main); }
+        .highlight-row { background-color: rgba(0, 123, 255, 0.1) !important; box-shadow: inset 4px 0 0 var(--tech-blue); }
+        .highlight-row td { color: var(--tech-blue); font-weight: 700; }
+
+        td a { color: var(--tech-blue); text-decoration: none; font-weight: 500; }
+        td a:hover { text-decoration: underline; }
+
+        #back-to-top {
+            display: none; position: fixed; bottom: 30px; right: 30px; 
+            width: 50px; height: 50px; background: rgba(26, 32, 44, 0.9);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+            color: #00f2fe; z-index: 1000; align-items: center; justify-content: center; transition: 0.4s;
+        }
+        #back-to-top.show { display: flex; }
+
+        body.dark-mode #back-to-top {
+            background: #cfc9be; color: #ff0d01; border: 1px solid #ff8400;
+        }
+
+        .floating-header-container {
+            position: fixed; top: 0; z-index: 100; overflow: hidden;
+            background: var(--glass-bg); backdrop-filter: blur(8px);
+            display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-bottom: 1px solid var(--tech-blue);
+        }
+
+        /* ===== Font size toggle button ===== */
+        .font-size-btn { font-weight: 800; font-size: 1rem !important; letter-spacing: -0.5px; }
+
+        /* ===== Font size levels ===== */
+        /* --- Medium (+15%) --- */
+        body.font-md td, body.font-md .detail-value { font-size: 1.05rem; }
+        body.font-md .m-card-name { font-size: 1.1rem; }
+        body.font-md .m-card-sub, body.font-md .m-card-id { font-size: 0.92rem; }
+        body.font-md .detail-label { font-size: 0.92rem; }
+        body.font-md .search-bar input, body.font-md .search-bar select { font-size: 1rem; }
+        body.font-md .card-name { font-size: 1.1rem; }
+        body.font-md .card-sub { font-size: 0.92rem; }
+
+        /* --- Large (+30%) --- */
+        body.font-lg td, body.font-lg .detail-value { font-size: 1.15rem; }
+        body.font-lg .m-card-name { font-size: 1.25rem; }
+        body.font-lg .m-card-sub, body.font-lg .m-card-id { font-size: 1.02rem; }
+        body.font-lg .detail-label { font-size: 1rem; }
+        body.font-lg .search-bar input, body.font-lg .search-bar select { font-size: 1.1rem; }
+        body.font-lg .card-name { font-size: 1.2rem; }
+        body.font-lg .card-sub { font-size: 1rem; }
+        body.font-lg .m-card { padding: 14px 16px; }
+        body.font-lg .detail-item { padding: 13px 14px; }
+
+        /* ===== Stat tag icons ===== */
+        .stat-icon { display: none; font-style: normal; }
+        .stat-label { display: inline; }
+
+        /* ===== Welcome bottom sheet (mobile) ===== */
+        .welcome-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 8998;
+            backdrop-filter: blur(2px);
+        }
+        .welcome-backdrop.show { display: block; }
+        .welcome-sheet {
+            position: fixed; bottom: -100%; left: 0; right: 0;
+            background: var(--card-bg); z-index: 8999;
+            border-radius: 20px 20px 0 0;
+            border-top: 1px solid var(--border-color);
+            padding: 12px 20px 36px;
+            box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+            transition: bottom 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .welcome-sheet.show { bottom: 0; }
+        .welcome-handle {
+            width: 36px; height: 4px; border-radius: 2px;
+            background: var(--border-color); margin: 0 auto 16px;
+        }
+        .welcome-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 18px; }
+        .welcome-tips { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+        .welcome-tip { display: flex; align-items: flex-start; gap: 12px; }
+        .tip-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+        .tip-desc { font-size: 0.82rem; color: var(--text-second, #718096); margin-top: 2px; }
+        .welcome-btn {
+            width: 100%; padding: 13px; border-radius: 10px; border: none;
+            background: linear-gradient(135deg, var(--tech-blue) 0%, #b300ad 100%);
+            color: white; font-size: 1rem; font-weight: 700; cursor: pointer;
+        }
+
+        /* ===== RWD Mobile ===== */
+        .search-bar-row { display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; }
+        .filter-collapse-panel { display: flex; gap: 10px; flex-wrap: wrap; }
+        .filter-toggle-btn {
+            display: none;
+            padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-main); cursor: pointer;
+            font-size: 1rem; transition: all 0.2s; flex-shrink: 0;
+        }
+        .filter-toggle-btn.active { border-color: var(--tech-blue); background: var(--tech-blue); color: white; }
+
+        /* Mobile cards */
+        .mobile-cards { display: none; }
+        .m-card {
+            background: var(--card-bg); border-radius: 10px; padding: 12px 14px;
+            margin-bottom: 8px; border-left: 3px solid var(--tech-blue);
+            cursor: pointer; transition: background 0.1s;
+        }
+        .m-card:active { background: var(--table-head); }
+        .m-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .m-card-name { color: var(--tech-blue); font-size: 0.95rem; font-weight: bold; }
+        .m-card-id { color: #718096; font-size: 0.8rem; }
+        .m-card-sub { color: #718096; font-size: 0.8rem; }
+        .m-card.highlight-row { border-left-color: #f6ad55; }
+        .m-card.highlight-row .m-card-name { color: #dd6b20; }
+
+        /* sticky top bar (desktop: no effect) */
+        .sticky-top-bar { background: var(--bg-color); }
+
+        /* mobile pinned card */
+        .mobile-pinned-card { display: none; }
+        .pinned-label { font-size: 0.7rem; color: #718096; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+        .m-card.pinned { border-left-color: #f6ad55; box-shadow: 0 2px 8px rgba(246,173,85,0.2); }
+        body.dark-mode .m-card.pinned { box-shadow: 0 2px 8px rgba(246,173,85,0.15); }
+
+        @media (max-width: 640px) {
+            .main-content-wrapper { padding: 0 12px; margin: 12px auto; }
+
+            .sticky-top-bar {
+                position: sticky;
+                top: 0;
+                z-index: 40;
+                padding-bottom: 6px;
+                margin-bottom: 4px;
+            }
+            .mobile-pinned-card { display: block; }
+            .mobile-pinned-card:empty { display: none; }
+
+            .header-bar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+            .header-bar h1 { font-size: 1rem; }
+            .header-logo { height: 30px; }
+            /* 手機：隱藏文字標籤，改用 icon */
+            .stat-label { display: none; }
+            .stat-icon { display: inline; }
+            .stat-tag { font-size: 0.85rem; padding: 4px 7px; gap: 3px; }
+
+            .search-bar { flex-direction: column; gap: 8px; margin-bottom: 0; }
+            .search-bar-row { width: 100%; }
+            .search-bar-row input { flex: 1; min-width: 0; }
+            .filter-toggle-btn { display: flex; align-items: center; justify-content: center; }
+
+            .filter-collapse-panel {
+                overflow: hidden; max-height: 0;
+                transition: max-height 0.3s ease;
+                flex-direction: row; gap: 8px;
+            }
+            .filter-collapse-panel.open { max-height: 60px; }
+            .filter-collapse-panel select { flex: 1; min-width: 0; }
+
+            .table-container { display: none; }
+            .mobile-cards { display: block; }
+            .floating-header-container { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tour-overlay">
+        <div class="tour-spotlight" id="tour-spotlight"></div>
+        <div id="tour-popover">
+            <h3 id="tour-title">標題</h3>
+            <p id="tour-desc">內容說明</p>
+            <div class="tour-footer">
+                <span class="tour-step-info" id="tour-step-count">1/5</span>
+                <div style="display:flex; gap:8px;">
+                    <button class="tour-btn" id="tour-skip">跳過</button>
+                    <button class="tour-btn tour-btn-next" id="tour-next">下一步</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content-wrapper">
+        <div class="header-bar">
+            <h1 id="ui-main-title">
+                <img src="TCUMAP/logo.png" alt="Logo" class="header-logo">
+                <span id="ui-main-title-text">校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span></span>
+            </h1>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div id="tour-restart" class="icon-btn-circle" title="顯示幫助教學">💡</div>
+                <div id="font-size-toggle" class="icon-btn-circle font-size-btn" title="調整字體大小">A</div>
+                <div id="lang-toggle" class="icon-btn-circle" title="Switch Language">EN</div>
+                <div id="theme-toggle" class="icon-btn-circle" title="切換深淺模式">
+                    <span id="theme-icon">🌙</span>
+                </div>
+                <div class="stat-tag"><span class="stat-icon">👤</span><span class="stat-label"><span id="ui-online-label">在線人數</span>: </span><span id="online-count" style="color:var(--tech-blue);">1</span></div>
+                <div class="stat-tag"><span class="stat-icon">👁</span><span class="stat-label"><span id="ui-visit-label">瀏覽人數</span>: </span><span id="visit-total">...</span></div>
+            </div>
+        </div>
+
+        <div id="status" style="font-size: 0.8rem; color: #718096; margin-bottom: 10px;">SYSTEM READY</div>
+
+        <div class="sticky-top-bar">
+            <div class="search-bar">
+                <div class="search-bar-row">
+                    <input type="text" id="search-input" placeholder="搜尋關鍵字或編號..." />
+                    <button id="filter-toggle-btn" class="filter-toggle-btn" title="篩選">⚙️</button>
+                    <button id="search-btn">搜尋空間</button>
+                    <button id="reset-btn" style="display:none; background: #32b42d;">RESET</button>
+                </div>
+                <div class="filter-collapse-panel" id="filter-collapse-panel">
+                    <select id="campus-filter"></select>
+                    <select id="building-filter"></select>
+                </div>
+            </div>
+            <div id="mobile-pinned-card" class="mobile-pinned-card"></div>
+        </div>
+
+        <div id="mobile-cards" class="mobile-cards"></div>
+
+        <div class="table-container" id="table-container">
+            <table id="space-table">
+                <thead><tr id="table-head-row"></tr></thead>
+                <tbody id="space-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="floating-header-container" id="floating-header-container">
+        <table id="floating-combined-table">
+            <thead id="floating-thead"></thead>
+            <tbody id="floating-pinned-tbody"></tbody>
+        </table>
+    </div>
+    
+    <a id="back-to-top" href="javascript:window.scrollTo({top:0, behavior:'smooth'});">
+        <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+    </a>
+
+    <div id="welcome-backdrop" class="welcome-backdrop"></div>
+    <div id="welcome-sheet" class="welcome-sheet">
+        <div class="welcome-handle"></div>
+        <div class="welcome-title" id="ws-title">🦋 快速上手</div>
+        <div class="welcome-tips">
+            <div class="welcome-tip"><span class="tip-icon">🔍</span><div><strong id="ws-t1">搜尋</strong><div id="ws-d1" class="tip-desc">輸入空間名稱或編號直接查找</div></div></div>
+            <div class="welcome-tip"><span class="tip-icon">⚙️</span><div><strong id="ws-t2">篩選</strong><div id="ws-d2" class="tip-desc">點擊 ⚙️ 展開，依校區或樓棟過濾</div></div></div>
+            <div class="welcome-tip"><span class="tip-icon">📍</span><div><strong id="ws-t3">查看位置</strong><div id="ws-d3" class="tip-desc">點空間名稱可查看平面圖與標記</div></div></div>
+        </div>
+        <button class="welcome-btn" id="welcome-dismiss">開始使用</button>
+    </div>
+
+    <script src="./config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            const Onboarding = {
+                currentStep: 0,
+                lang: 'zh',
+                steps: {
+                    zh: [
+                        { target: 'search-input', title: '快速搜尋', desc: '輸入編號（如 L0304）或空間名稱關鍵字即可快速查找。' },
+                        { target: 'campus-filter', title: '校區與樓棟', desc: '您可以直接篩選特定的校區與教學大樓。' },
+                        { target: 'lang-toggle', title: '多語系切換', desc: '點擊此處可在 中文 與 English 介面間切換。' },
+                        { target: 'theme-toggle', title: '深淺模式', desc: '切換視覺風格，保護您的眼睛。' },
+                        { target: 'table-head-row', title: '點擊排序', desc: '點擊表頭欄位名稱（如：空間編號），可進行升冪或降冪排序。' }
+                    ],
+                    en: [
+                        { target: 'search-input', title: 'Quick Search', desc: 'Type Space ID (e.g., L0304) or keywords to find spaces.' },
+                        { target: 'campus-filter', title: 'Campus Filter', desc: 'Filter by specific campus or building blocks.' },
+                        { target: 'lang-toggle', title: 'Language', desc: 'Switch between Chinese and English.' },
+                        { target: 'theme-toggle', title: 'Visual Theme', desc: 'Toggle between Dark and Light modes.' },
+                        { target: 'table-head-row', title: 'Sort Data', desc: 'Click column headers (e.g., Space ID) to sort the results.' }
+                    ]
+                },
+                init(lang) {
+                    this.lang = lang || 'zh';
+                    const nextBtn = document.getElementById('tour-next');
+                    const skipBtn = document.getElementById('tour-skip');
+                    nextBtn.onclick = (e) => { e.stopPropagation(); this.next(); };
+                    skipBtn.onclick = (e) => { e.stopPropagation(); this.finish(); };
+                    if (localStorage.getItem('tcu_tour_done') === 'true') return;
+                    setTimeout(() => {
+                        if (window.innerWidth <= 640) { showWelcomeSheet(); }
+                        else { this.start(); }
+                    }, 1200);
+                },
+                start() {
+                    document.getElementById('tour-overlay').style.display = 'block';
+                    this.render();
+                },
+                render() {
+                    const config = this.steps[this.lang];
+                    const step = config[this.currentStep];
+                    const targetEl = document.getElementById(step.target);
+                    if (!targetEl || targetEl.offsetHeight === 0) {
+                        if (this.currentStep < config.length - 1) { this.currentStep++; this.render(); }
+                        return;
+                    }
+                    document.getElementById('tour-title').innerText = step.title;
+                    document.getElementById('tour-desc').innerText = step.desc;
+                    document.getElementById('tour-step-count').innerText = `${this.currentStep + 1} / ${config.length}`;
+                    const nextText = this.currentStep === config.length - 1 ? (this.lang === 'zh' ? '完成' : 'Finish') : (this.lang === 'zh' ? '下一步' : 'Next');
+                    document.getElementById('tour-next').innerText = nextText;
+                    document.getElementById('tour-skip').innerText = this.lang === 'zh' ? '跳過' : 'Skip';
+                    const rect = targetEl.getBoundingClientRect();
+                    const spotlight = document.getElementById('tour-spotlight');
+                    const popover = document.getElementById('tour-popover');
+                    spotlight.style.width = `${rect.width + 10}px`;
+                    spotlight.style.height = `${rect.height + 10}px`;
+                    spotlight.style.left = `${rect.left - 5}px`;
+                    spotlight.style.top = `${rect.top - 5}px`;
+                    let popTop = rect.bottom + 15;
+                    let popLeft = rect.left + (rect.width / 2) - 140;
+                    if (popLeft < 20) popLeft = 20;
+                    if (popLeft + 280 > window.innerWidth - 20) popLeft = window.innerWidth - 300;
+                    if (popTop + 180 > window.innerHeight) popTop = rect.top - 180;
+                    popover.style.left = `${popLeft}px`;
+                    popover.style.top = `${popTop}px`;
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                },
+                next() {
+                    const config = this.steps[this.lang];
+                    if (this.currentStep < config.length - 1) { this.currentStep++; this.render(); } else { this.finish(); }
+                },
+                finish() {
+                    document.getElementById('tour-overlay').style.display = 'none';
+                    localStorage.setItem('tcu_tour_done', 'true');
+                    this.currentStep = 0;
+                }
+            };
+
+            // --- 更新後的字典檔：符合使用者指定選項 ---
+            const BUILDING_NAMES_I18N = {
+                zh: {
+                    "1": { "A": "A棟 (和敬樓)", "B": "B棟 (和敬樓)", "C": "C棟 (和敬樓)", "D": "D棟 (勤耕樓)", "E": "E棟 (勤耕樓)", "F": "F棟 (大捨樓)", "H": "H棟 (福田樓)", "T": "T棟 (大喜館)" },
+                    "2": { "A": "2A (合心樓)", "B": "2B (文心樓)", "C": "2C (立心樓)", "D": "2D (知心樓)", "E": "2E (明心樓)", "G": "2G (體育館/活動中心)" },
+                    "3": { "A": "A棟 (智慧樓)", "B": "B棟 (精進樓)", "C": "C棟 (圖書館)", "D": "D棟 (精進樓)", "E": "E棟 (精進樓)", "F": "F棟 (協力樓)", "K": "K棟 (智耕樓)" }
+                },
+                en: {
+                    "1": { "A": "Bldg A (Hejing)", "B": "Bldg B (Hejing)", "C": "Bldg C (Hejing)", "D": "Bldg D (Qingeng)", "E": "Bldg E (Qingeng)", "F": "Bldg F (Dashe)", "H": "Bldg H (Futian)", "T": "Bldg T (Daxi)" },
+                    "2": { "A": "Bldg 2A (Hexin)", "B": "Bldg 2B (Wenxin)", "C": "Bldg 2C (Lixin)", "D": "Bldg 2D (Zhixin)", "E": "Bldg 2E (Mingxin)", "G": "Bldg 2G (Gym/Activity Center)" },
+                    "3": { "A": "Bldg A (Zhihui)", "B": "Bldg B (Jingjin)", "C": "Bldg C (Library)", "D": "Bldg D (Jingjin)", "E": "Bldg E (Jingjin)", "F": "Bldg F (Xieli)", "K": "Bldg K (Zhigeng)" }
+                }
+            };
+
+            const I18N_DICT = {
+                zh: {
+                    mainTitle: '校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span>',
+                    online: '在線人數', visit: '瀏覽人數',
+                    searchPlh: '搜尋關鍵字或編號...', searchBtn: '搜尋空間',
+                    allCampus: '-- 所有校區 --', allBld: '-- 所有樓棟 --', bldUnit: ' 棟',
+                    campusMap: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
+                    colNames: { 'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區', 'BuildingNo': '樓棟', 'FloorNo': '樓層', 'PicNo': '圖號' },
+                    floorUnit: ' 樓', systemReady: '系統就緒', other: '其他', resetBtn: '清除',
+                    wsTitle: '🦋 快速上手', wsT1: '搜尋', wsD1: '輸入空間名稱或編號直接查找',
+                    wsT2: '篩選', wsD2: '點擊 ⚙️ 展開，依校區或樓棟過濾',
+                    wsT3: '查看位置', wsD3: '點空間名稱可查看平面圖與標記', wsBtn: '開始使用'
+                },
+                en: {
+                    mainTitle: 'Campus Wayfinding <span style="color:var(--tech-blue)">TCU Map</span>',
+                    online: 'Online', visit: 'Visits',
+                    searchPlh: 'Search ID or keywords...', searchBtn: 'Search',
+                    allCampus: '-- All Campus --', allBld: '-- All Buildings --', bldUnit: ' Bld',
+                    campusMap: { '1': 'Main Campus', '2': 'Jieren Campus', '3': 'Jianguo Campus' },
+                    colNames: { 'SpaceNo': 'Space ID', 'SpaceName': 'Name', 'CampusNo': 'Campus', 'BuildingNo': 'Building', 'FloorNo': 'Floor', 'PicNo': 'Pic ID' },
+                    floorUnit: 'F', systemReady: 'SYSTEM READY', other: 'Other', resetBtn: 'RESET',
+                    wsTitle: '🦋 Quick Start', wsT1: 'Search', wsD1: 'Type space name or ID to find quickly',
+                    wsT2: 'Filter', wsD2: 'Tap ⚙️ to filter by campus or building',
+                    wsT3: 'View Location', wsD3: 'Tap a space name to see its floor plan', wsBtn: 'Get Started'
+                }
+            };
+
+            const app = {
+                supabase: null, currentData: [], highlightID: null, sortCol: 'SpaceNo', sortDir: 1,
+                lang: localStorage.getItem('lang') || 'zh',
+
+                async init() {
+                    this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    this.getSessionId();                         // ← 新增:確保 session ID 存在
+                    this.logActivity('ENTER', '進入首頁');         // ← 新增:記錄進站
+                    this.setupTheme(); 
+                    this.setupLanguage(); 
+                    this.setupOnlinePresence();
+                    this.setupStats();
+                    this.bindEvents();
+                    this.loadFromURL();
+                    Onboarding.init(this.lang);
+                },
+
+                // === 取得或建立 Session ID(每個瀏覽器各一組,永久) ===
+                getSessionId() {
+                    let sid = localStorage.getItem('tcu_user_id');
+                    if (!sid) {
+                        sid = 'tcu-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+                        localStorage.setItem('tcu_user_id', sid);
+                    }
+                    return sid;
+                },
+
+                // === 寫一筆 log(透過 RPC,失敗不影響使用者體驗) ===
+                async logActivity(actionType, details = '') {
+                    try {
+                        const sessionId = this.getSessionId();
+                        const eventTimeTw = new Date().toLocaleString('zh-TW', {
+                            timeZone: 'Asia/Taipei',
+                            hour12: false
+                        });
+                        await this.supabase.rpc('log_user_activity', {
+                            p_session_id: sessionId,
+                            p_action_type: actionType,
+                            p_details: String(details).slice(0, 500),
+                            p_event_time_tw: eventTimeTw
+                        });
+                    } catch (e) {
+                        console.debug('log skipped:', e && e.message);
+                    }
+                },
+
+                setupTheme() {
+                    const toggleBtn = document.getElementById('theme-toggle');
+                    const themeIcon = document.getElementById('theme-icon');
+                    const body = document.body;
+                    const savedTheme = localStorage.getItem('theme');
+                    const updateUI = (isDark) => {
+                        body.classList.toggle('dark-mode', isDark);
+                        themeIcon.textContent = isDark ? '🔆' : '🌙';
+                    };
+                    if (savedTheme === 'dark') updateUI(true);
+                    toggleBtn.onclick = () => {
+                        const isNowDark = !body.classList.contains('dark-mode');
+                        updateUI(isNowDark);
+                        localStorage.setItem('theme', isNowDark ? 'dark' : 'light');
+                    };
+                },
+
+                setupLanguage() {
+                    const langBtn = document.getElementById('lang-toggle');
+                    const updateUI = () => {
+                        const dict = I18N_DICT[this.lang];
+                        document.getElementById('ui-main-title-text').innerHTML = dict.mainTitle;
+                        document.getElementById('ui-online-label').textContent = dict.online;
+                        document.getElementById('ui-visit-label').textContent = dict.visit;
+                        document.getElementById('status').textContent = dict.systemReady;
+                        document.getElementById('search-input').placeholder = dict.searchPlh;
+                        document.getElementById('search-btn').textContent = dict.searchBtn;
+                        document.getElementById('reset-btn').textContent = dict.resetBtn;
+                        langBtn.textContent = this.lang === 'zh' ? 'EN' : '中文';
+                        
+                        document.getElementById('ws-title').textContent = dict.wsTitle;
+                        document.getElementById('ws-t1').textContent = dict.wsT1;
+                        document.getElementById('ws-d1').textContent = dict.wsD1;
+                        document.getElementById('ws-t2').textContent = dict.wsT2;
+                        document.getElementById('ws-d2').textContent = dict.wsD2;
+                        document.getElementById('ws-t3').textContent = dict.wsT3;
+                        document.getElementById('ws-d3').textContent = dict.wsD3;
+                        document.getElementById('welcome-dismiss').textContent = dict.wsBtn;
+                        this.renderFilters();
+                        if (this.currentData.length > 0) this.sortAndRender();
+                        Onboarding.lang = this.lang;
+                    };
+                    langBtn.onclick = () => {
+                        this.lang = this.lang === 'zh' ? 'en' : 'zh';
+                        localStorage.setItem('lang', this.lang);
+                        updateUI();
+                    };
+                    updateUI();
+                },
+
+                setupOnlinePresence() {
+                    const channel = this.supabase.channel('online-users', { config: { presence: { key: 'user-' + Math.random().toString(36).substr(2, 9) } } });
+                    channel.on('presence', { event: 'sync' }, () => {
+                        const state = channel.presenceState();
+                        document.getElementById('online-count').textContent = Object.keys(state).length;
+                    }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await channel.track({ online_at: new Date().toISOString() }); });
+                },
+
+                // === 取得歷史總瀏覽人數(透過 RPC,不需要 daily_page_views) ===
+                async setupStats() {
+                    try {
+                        const { data, error } = await this.supabase.rpc('get_visit_count');
+                        if (!error && data !== null) {
+                            document.getElementById('visit-total').textContent = data;
+                        } else {
+                            document.getElementById('visit-total').textContent = '-';
+                        }
+                    } catch (e) {
+                        document.getElementById('visit-total').textContent = '-';
+                    }
+                },
+
+                renderFilters() {
+                    const dict = I18N_DICT[this.lang];
+                    let c = `<option value="">${dict.allCampus}</option>`;
+                    Object.entries(dict.campusMap).forEach(([k, v]) => c += `<option value="${k}">${v}</option>`);
+                    const campEl = document.getElementById('campus-filter');
+                    const savedVal = campEl.value;
+                    campEl.innerHTML = c;
+                    campEl.value = savedVal;
+                    this.renderBuildings(savedVal);
+                },
+
+                // --- 修改這裡：套用使用者指定的樓棟篩選選項 ---
+                renderBuildings(campusNo) {
+                    const dict = I18N_DICT[this.lang];
+                    let b = `<option value="">${dict.allBld}</option>`;
+                    const addOption = (val, text) => b += `<option value="${val}">${text}</option>`;
+                    
+                    if (!campusNo) {
+                        for (let i = 65; i <= 90; i++) { const char = String.fromCharCode(i); addOption(char, `${char}${dict.bldUnit}`); }
+                    } else if (campusNo === '1') {
+                        // 中央校區: 僅顯示 A, B, C, D, E, F, H, T
+                        const blds1 = ['A', 'B', 'C', 'D', 'E', 'F', 'H', 'T'];
+                        const names1 = BUILDING_NAMES_I18N[this.lang]["1"];
+                        blds1.forEach(c => addOption(c, names1[c]));
+                        addOption('other', dict.other);
+                    } else if (campusNo === '2') {
+                        // 介仁校區: 僅顯示 A, B, C, D, E, G
+                        const blds2 = ['A', 'B', 'C', 'D', 'E', 'G'];
+                        const names2 = BUILDING_NAMES_I18N[this.lang]["2"];
+                        blds2.forEach(c => addOption(c, names2[c]));
+                        addOption('other', dict.other);
+                    } else if (campusNo === '3') {
+                        const blds3 = ['A', 'B', 'C', 'D', 'E', 'F', 'K'];
+                        const names3 = BUILDING_NAMES_I18N[this.lang]["3"];
+                        blds3.forEach(c => addOption(c, names3[c]));
+                        addOption('other', dict.other);
+                    }
+                    document.getElementById('building-filter').innerHTML = b;
+                },
+
+                bindEvents() {
+                    const triggerSearch = () => this.fetchData(document.getElementById('search-input').value);
+                    document.getElementById('search-btn').onclick = triggerSearch;
+                    document.getElementById('search-input').onkeypress = (e) => { if (e.key === 'Enter') triggerSearch(); };
+                    
+                    document.getElementById('campus-filter').onchange = (e) => {
+                        this.renderBuildings(e.target.value);
+                        triggerSearch();
+                    };
+                    document.getElementById('building-filter').onchange = triggerSearch;
+
+                    document.getElementById('reset-btn').onclick = () => { 
+                        this.highlightID = null; 
+                        document.getElementById('search-input').value = "";
+                        document.getElementById('campus-filter').value = "";
+                        this.renderBuildings("");
+                        triggerSearch();
+                        window.location.href = window.location.pathname; 
+                    };
+
+                    const sortClick = (e) => {
+                        const th = e.target.closest('th');
+                        if (th) {
+                            this.sortDir = (this.sortCol === th.dataset.col) ? this.sortDir * -1 : 1;
+                            this.sortCol = th.dataset.col;
+                            this.sortAndRender();
+                        }
+                    };
+                    document.getElementById("table-head-row").onclick = sortClick;
+                    document.getElementById("floating-thead").onclick = sortClick;
+                    
+                    const fontSizes = ['', 'font-md', 'font-lg'];
+                    const fontLabels = ['A', 'A+', 'A++'];
+                    let fontIdx = fontSizes.indexOf(localStorage.getItem('font-size') || '');
+                    if (fontIdx < 0) fontIdx = 0;
+                    const applyFontSize = () => {
+                        document.body.classList.remove('font-md', 'font-lg');
+                        if (fontSizes[fontIdx]) document.body.classList.add(fontSizes[fontIdx]);
+                        document.getElementById('font-size-toggle').textContent = fontLabels[fontIdx];
+                        localStorage.setItem('font-size', fontSizes[fontIdx]);
+                    };
+                    applyFontSize();
+                    document.getElementById('font-size-toggle').onclick = () => {
+                        fontIdx = (fontIdx + 1) % fontSizes.length;
+                        applyFontSize();
+                    };
+
+                    document.getElementById('filter-toggle-btn').onclick = () => {
+                        const panel = document.getElementById('filter-collapse-panel');
+                        const btn = document.getElementById('filter-toggle-btn');
+                        panel.classList.toggle('open');
+                        btn.classList.toggle('active');
+                    };
+                    document.getElementById('tour-restart').onclick = () => {
+                        localStorage.removeItem('tcu_tour_done');
+                        if (window.innerWidth <= 640) { showWelcomeSheet(); }
+                        else { Onboarding.currentStep = 0; Onboarding.start(); }
+                    };
+                    window.onscroll = () => {
+                        const t = document.getElementById("space-table"), fc = document.getElementById("floating-header-container"), 
+                              tr = t.getBoundingClientRect(), mc = document.getElementById("table-container"), 
+                              btn = document.getElementById("back-to-top");
+                        if (window.scrollY > 400) btn.classList.add('show'); else btn.classList.remove('show');
+                        if (tr.top < 0 && tr.bottom > 150) {
+                            fc.style.display = "block"; fc.style.width = mc.offsetWidth + "px";
+                            fc.style.left = mc.getBoundingClientRect().left + "px"; fc.style.scrollLeft = mc.scrollLeft;
+                        } else { fc.style.display = "none"; }
+                    };
+
+                    // === 新增:記錄使用者點擊空間連結(進 Details.html) ===
+                    const trackClick = (e) => {
+                        const link = e.target.closest('a[href^="Details.html"]');
+                        const card = e.target.closest('.m-card[onclick]');
+                        if (link) {
+                            // 桌面版:點表格內的連結
+                            const spaceName = link.textContent.trim();
+                            this.logActivity('CLICK_LINK', `查看空間: ${spaceName}`);
+                        } else if (card) {
+                            // 手機版:點 m-card
+                            const nameEl = card.querySelector('.m-card-name');
+                            const idEl = card.querySelector('.m-card-id');
+                            const spaceName = nameEl ? nameEl.textContent.trim() : '';
+                            const spaceId = idEl ? idEl.textContent.trim() : '';
+                            this.logActivity('CLICK_LINK', `查看空間: ${spaceName} (${spaceId})`);
+                        }
+                    };
+                    document.getElementById('space-tbody').addEventListener('click', trackClick);
+                    document.getElementById('mobile-cards').addEventListener('click', trackClick);
+                },
+
+                async fetchData(kw = "", hID = null) {
+                    // 新增:只記錄使用者主動搜尋,初始載入不記
+                    if (kw && kw.trim()) {
+                        this.logActivity('SEARCH', `關鍵字: ${kw.trim()}`);
+                    }
+
+                    const camp = document.getElementById('campus-filter').value;
+                    const bld = document.getElementById('building-filter').value;
+                    let q = this.supabase.from("TblSpace").select('*');
+                    
+                    if (kw) q = q.or(`SpaceName.ilike.%${kw}%,SpaceNo.ilike.%${kw}%`);
+                    
+                    if (camp) q = q.eq('CampusNo', camp);
+                    
+                    if (bld) {
+                        if (bld === 'other') {
+                            // --- 修改這裡：根據新名單調整「其他」所排除的條件 ---
+                            let excludeList = [];
+                            if (camp === '1') excludeList = ['A','B','C','D','E','F','H','T'];
+                            else if (camp === '2') excludeList = ['A','B','C','D','E','G','2A','2B','2C','2D','2E','2G'];
+                            else if (camp === '3') excludeList = ['A','B','C','D','E','F','G','H','I','J','K','Lib'];
+                            
+                            if (excludeList.length > 0) {
+                                q = q.not('BuildingNo', 'in', `(${excludeList.join(',')})`);
+                            }
+                        } else {
+                            q = q.or(`BuildingNo.eq.${bld},BuildingNo.eq.2${bld}`);
+                        }
+                    }
+
+                    const { data } = await q.limit(1000);
+                    this.currentData = data || [];
+                    if (hID) this.highlightID = String(hID);
+                    this.sortAndRender();
+                },
+
+                sortAndRender() {
+                    const p = this.currentData.filter(r => String(r.sID) === this.highlightID);
+                    const o = this.currentData.filter(r => String(r.sID) !== this.highlightID);
+                    const colKeys = ['SpaceNo', 'SpaceName', 'CampusNo', 'BuildingNo', 'FloorNo', 'PicNo'];
+                    o.sort((a, b) => String(a[this.sortCol] || "").localeCompare(String(b[this.sortCol] || ""), undefined, { numeric: true }) * this.sortDir);
+                    this.currentData = [...p, ...o];
+                    const dict = I18N_DICT[this.lang];
+                    const h = colKeys.map(c => {
+                        const activeClass = this.sortCol === c ? (this.sortDir === 1 ? 'active-asc' : 'active-desc') : '';
+                        return `<th data-col="${c}" class="${activeClass}">${dict.colNames[c]}<span class="sort-indicator"><span class="sort-arrow arrow-up">▲</span><span class="sort-arrow arrow-down">▼</span></span></th>`;
+                    }).join('');
+                    document.getElementById("table-head-row").innerHTML = h;
+                    document.getElementById("floating-thead").innerHTML = `<tr>${h}</tr>`;
+                    let pinnedHTML = "";
+                    const rows = this.currentData.map(row => {
+                        const isP = String(row.sID) === this.highlightID;
+                        const rowC = colKeys.map(c => {
+                            let v = row[c] ?? "";
+                            if (c === 'CampusNo') v = dict.campusMap[v] || v;
+                            if (c === 'BuildingNo') {
+                                const m = BUILDING_NAMES_I18N[this.lang][row.CampusNo];
+                                v = m ? (m[v] || m[v.replace(/^2/,'')] || `${v}${dict.bldUnit}`) : (v ? `${v}${dict.bldUnit}` : "");
+                            }
+                            if (c === 'FloorNo' && v) v = `${v}${dict.floorUnit}`;
+                            if (c === 'SpaceName' && row.PicNo) return `<td><a href="Details.html?sID=${row.sID}&keyword=${encodeURIComponent(document.getElementById('search-input').value)}">${v}</a></td>`;
+                            return `<td>${v}</td>`;
+                        }).join('');
+                        const fullR = `<tr class="${isP ? 'highlight-row' : ''}">${rowC}</tr>`;
+                        if (isP) pinnedHTML = fullR;
+                        return fullR;
+                    }).join('');
+                    document.getElementById("space-tbody").innerHTML = rows;
+                    document.getElementById("floating-pinned-tbody").innerHTML = pinnedHTML;
+                    document.getElementById('reset-btn').style.display = 'inline-block';
+
+                    const pinnedContainer = document.getElementById('mobile-pinned-card');
+                    if (this.highlightID) {
+                        const pinnedRow = this.currentData.find(r => String(r.sID) === this.highlightID);
+                        if (pinnedRow) {
+                            const pCampus = dict.campusMap[pinnedRow.CampusNo] || pinnedRow.CampusNo || "";
+                            const pBMap = BUILDING_NAMES_I18N[this.lang][pinnedRow.CampusNo];
+                            const pBNo = String(pinnedRow.BuildingNo || "");
+                            const pBName = pBMap ? (pBMap[pBNo] || pBMap[pBNo.replace(/^2/,'')] || `${pBNo}${dict.bldUnit}`) : (pBNo ? `${pBNo}${dict.bldUnit}` : "");
+                            const pFloor = pinnedRow.FloorNo ? `${pinnedRow.FloorNo}${dict.floorUnit}` : "";
+                            const pUrl = pinnedRow.PicNo ? `Details.html?sID=${pinnedRow.sID}&keyword=${encodeURIComponent(document.getElementById('search-input').value)}` : '#';
+                            pinnedContainer.innerHTML = `
+                                <div class="pinned-label">📌 上次查看</div>
+                                <div class="m-card pinned" onclick="location.href='${pUrl}'">
+                                    <div class="m-card-top">
+                                        <span class="m-card-name" style="color:#dd6b20">${pinnedRow.SpaceName || ''}</span>
+                                        <span class="m-card-id">${pinnedRow.SpaceNo || ''}</span>
+                                    </div>
+                                    <div class="m-card-sub">${pCampus} · ${pBName}${pFloor ? ' · ' + pFloor : ''}</div>
+                                </div>`;
+                        } else { pinnedContainer.innerHTML = ''; }
+                    } else { pinnedContainer.innerHTML = ''; }
+
+                    const cards = this.currentData.map(row => {
+                        const isP = String(row.sID) === this.highlightID;
+                        let campus = dict.campusMap[row.CampusNo] || row.CampusNo || "";
+                        const bMap = BUILDING_NAMES_I18N[this.lang][row.CampusNo];
+                        const bNo = String(row.BuildingNo || "");
+                        const bName = bMap ? (bMap[bNo] || bMap[bNo.replace(/^2/,'')] || `${bNo}${dict.bldUnit}`) : (bNo ? `${bNo}${dict.bldUnit}` : "");
+                        const floor = row.FloorNo ? `${row.FloorNo}${dict.floorUnit}` : "";
+                        const url = row.PicNo ? `Details.html?sID=${row.sID}&keyword=${encodeURIComponent(document.getElementById('search-input').value)}` : '#';
+                        return `<div class="m-card${isP ? ' highlight-row' : ''}" onclick="location.href='${url}'">
+                            <div class="m-card-top">
+                                <span class="m-card-name">${row.SpaceName || ''}</span>
+                                <span class="m-card-id">${row.SpaceNo || ''}</span>
+                            </div>
+                            <div class="m-card-sub">${campus} · ${bName}${floor ? ' · ' + floor : ''}</div>
+                        </div>`;
+                    }).join('');
+                    document.getElementById('mobile-cards').innerHTML = cards || `<div style="text-align:center;color:#718096;padding:20px">找不到符合的空間</div>`;
+                },
+
+                loadFromURL() {
+                    const p = new URLSearchParams(window.location.search);
+                    const kw = p.get('keyword') || "";
+                    this.fetchData(kw, p.get('highlightID'));
+                    document.getElementById('search-input').value = kw;
+                }
+            };
+            
+            function showWelcomeSheet() {
+                const sheet = document.getElementById('welcome-sheet');
+                const backdrop = document.getElementById('welcome-backdrop');
+                sheet.classList.add('show');
+                backdrop.classList.add('show');
+            }
+            function dismissWelcomeSheet() {
+                document.getElementById('welcome-sheet').classList.remove('show');
+                document.getElementById('welcome-backdrop').classList.remove('show');
+                localStorage.setItem('tcu_tour_done', 'true');
+            }
+            document.getElementById('welcome-dismiss').onclick = dismissWelcomeSheet;
+            document.getElementById('welcome-backdrop').onclick = dismissWelcomeSheet;
+            window.showWelcomeSheet = showWelcomeSheet;
+
+            app.init();
+        });
+    </script>
+</body>
+</html>
