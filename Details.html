@@ -103,7 +103,7 @@ h1 {
     box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
     border: 2px solid var(--border-color);
 }
-#image-zoom-wrapper {
+#image-zoom-wrapper, .image-zoom-wrapper {
     position: relative;
     cursor: zoom-in; width: 100%; display: inline-block;
 }
@@ -115,40 +115,57 @@ h1 {
 /* --- 紅點標記樣式 --- */
 .map-marker {
     position: absolute;
-    width: 10px; height: 10px;
-    background-color: rgba(255, 62, 62, 0.65);
+    width: 10px;
+    height: 10px;
+    background-color: rgba(255, 62, 62, 0.9);
     border: 1.5px solid rgba(255, 255, 255, 0.9);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 8px rgba(255, 62, 62, 0.5);
-    z-index: 10;
-    pointer-events: none;
+    box-shadow: 0 0 8px rgba(255, 62, 62, 0.8);
+    z-index: 20;
 }
 .map-marker::after {
     content: "";
-    position: absolute; top: -1.5px; left: -1.5px;
-    width: 10px; height: 10px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    border: 1.2px solid rgba(255, 62, 62, 0.6);
-    animation: pulse 1.8s infinite;
+    border: 3px solid #ffd700;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    animation: pulse 1.5s infinite;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
 }
 @keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(3.5); opacity: 0; }
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+    100% { transform: translate(-50%, -50%) scale(3.8); opacity: 0; }
 }
 .marker-label {
     position: absolute;
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: rgba(255, 48, 48, 0.95);
     color: #ffffff;
-    padding: 2px 7px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
     white-space: nowrap;
-    transform: translate(-50%, -190%);
+    transform: translate(-50%, -230%);
     z-index: 11;
     pointer-events: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 15px rgba(255,0,0,0.45);
+}
+
+.marker-label::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -7px;
+    transform: translateX(-50%);
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 8px solid rgba(255,48,48,0.95);
 }
 
 /* ===== Font size levels ===== */
@@ -236,14 +253,18 @@ body.font-lg h1 { font-size: 1.95rem; }
             </div>
         </div>
 
-        <div class="view-switcher">
-            <button id="btn-room-view" class="view-btn active" onclick="switchView('room')">📍 樓層平面圖</button>
-            <button id="btn-campus-view" class="view-btn" onclick="switchView('campus')">🏫 校區平面圖</button>
-        </div>
-
-        <div id="image-container">
-            <div id="image-zoom-wrapper">
-                <span id="img-status" style="color:var(--text-second)">Initializing Scanner...</span>
+        <div id="image-container" style="display:flex;flex-direction:column;gap:25px;background:transparent;box-shadow:none;border:none;">
+            <div class="map-section">
+                <h3 style="color:var(--tech-blue)">📍 樓層平面圖</h3>
+                <div id="room-image-wrapper" class="image-zoom-wrapper">
+                    <span style="color:var(--text-second)">Initializing Scanner...</span>
+                </div>
+            </div>
+            <div class="map-section">
+                <h3 style="color:var(--tech-blue)">🏫 校區平面圖</h3>
+                <div id="campus-image-wrapper" class="image-zoom-wrapper">
+                    <span style="color:var(--text-second)">Initializing Scanner...</span>
+                </div>
             </div>
         </div>
     </div>
@@ -301,52 +322,31 @@ function getParam(n) { return new URLSearchParams(window.location.search).get(n)
 /** --- 切換視角邏輯 (加入中央、介仁、建國校區大樓判斷) --- **/
 function switchView(mode) {
     if (!globalData) return;
-    currentView = mode;
 
-    document.getElementById('btn-room-view').classList.toggle('active', mode === 'room');
-    document.getElementById('btn-campus-view').classList.toggle('active', mode === 'campus');
+    let pic = String(globalData.PicNo || "");
+    if (pic.includes("E+") || pic.includes(".")) pic = globalData.SpaceName;
+    loadAndDisplayImage(pic, true, "room-image-wrapper");
 
-    if (mode === 'room') {
-        let pic = String(globalData.PicNo || "");
-        if (pic.includes("E+") || pic.includes(".")) pic = globalData.SpaceName;
-        loadAndDisplayImage(pic, true); // 顯示標記
-    } else {
-        let campusPic = `campus_${globalData.CampusNo}`;
-        const rawBld = String(globalData.BuildingNo || "").toUpperCase();
+    let campusPic = `campus_${globalData.CampusNo}`;
+    const rawBld = String(globalData.BuildingNo || "").toUpperCase();
 
-        // --- 中央校區 (1) 特殊處理 ---
-        if (String(globalData.CampusNo) === '1') {
-            const validBuildings1 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'T'];
-            if (validBuildings1.includes(rawBld)) {
-                campusPic = `1${rawBld}pic`; // 組合出 1Apic
-            }
-        }
-        // --- 介仁校區 (2) 特殊處理 ---
-        else if (String(globalData.CampusNo) === '2') {
-            // 自動把可能夾帶的 '2' 去掉 (如 '2A' 變成 'A')
-            const cleanBld = rawBld.replace(/^2/, '');
-            const validBuildings2 = ['A', 'B', 'C', 'D', 'E', 'G', 'H'];
-            if (validBuildings2.includes(cleanBld)) {
-                campusPic = `2${cleanBld}pic`; // 組合出 2Apic
-            }
-        }
-        // --- 建國校區 (3) 特殊處理 ---
-        else if (String(globalData.CampusNo) === '3') {
-            // 自動把可能夾帶的 '3' 去掉 (如 '3A' 變成 'A')
-            const cleanBld = rawBld.replace(/^3/, '');
-            const validBuildings3 = ['A', 'B', 'C', 'D', 'E', 'F', 'K'];
-            if (validBuildings3.includes(cleanBld)) {
-                campusPic = `3${cleanBld}pic`; // 組合出 3Apic
-            }
-        }
-
-        loadAndDisplayImage(campusPic, false); // 不顯示標記
+    if (String(globalData.CampusNo) === '1') {
+        const valid=['A','B','C','D','E','F','G','T'];
+        if(valid.includes(rawBld)) campusPic=`1${rawBld}pic`;
+    } else if(String(globalData.CampusNo)==='2') {
+        const clean=rawBld.replace(/^2/,'');
+        if(['A','B','C','D','E','G','H'].includes(clean)) campusPic=`2${clean}pic`;
+    } else if(String(globalData.CampusNo)==='3') {
+        const clean=rawBld.replace(/^3/,'');
+        if(['A','B','C','D','E','F','K'].includes(clean)) campusPic=`3${clean}pic`;
     }
+
+    loadAndDisplayImage(campusPic, false, "campus-image-wrapper");
 }
 
 /** --- 圖片載入 (支援多副檔名) --- **/
-async function loadAndDisplayImage(picName, showMarkers) {
-    const wrap = document.getElementById("image-zoom-wrapper");
+async function loadAndDisplayImage(picName, showMarkers, wrapperId = "image-zoom-wrapper") {
+    const wrap = document.getElementById(wrapperId);
     wrap.innerHTML = `<span style='color:var(--text-second)'>影像掃描中...</span>`;
 
     const exts = ['png', 'jpg', 'jpeg', 'webp'];
@@ -398,7 +398,7 @@ async function fetchAndDrawMarker(targetSpaceNo, targetPicNo, targetCampusNo) {
     if (data && data.length > 0) {
         // 優先選 image_name 符合當前圖片的,找不到才用第一筆
         const m = data.find(r => r.image_name === targetPicNo) || data[0];
-        const wrap = document.getElementById("image-zoom-wrapper");
+        const wrap = document.getElementById("room-image-wrapper");
         const dot = document.createElement('div');
         dot.className = 'map-marker';
         dot.style.left = m.x_percent + '%';
@@ -419,24 +419,23 @@ async function fetchAndDrawMarker(targetSpaceNo, targetPicNo, targetCampusNo) {
 
 /** --- 縮放功能 --- **/
 function enableImageZoom() {
-    const wrapper = document.getElementById('image-zoom-wrapper');
-    const overlay = document.createElement('div');
-    overlay.className = 'fullscreen-overlay';
+    document.querySelectorAll('.image-zoom-wrapper').forEach(wrapper => {
+        wrapper.onclick = () => {
+            const overlay = document.createElement('div');
+            overlay.className = 'fullscreen-overlay';
+            const clonedContent = wrapper.cloneNode(true);
+            clonedContent.className = 'zoomed-content';
+            clonedContent.id = '';
+            overlay.appendChild(clonedContent);
+            document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden';
 
-    wrapper.onclick = () => {
-        document.body.appendChild(overlay);
-        const clonedContent = wrapper.cloneNode(true);
-        clonedContent.className = 'zoomed-content';
-        clonedContent.id = '';
-        overlay.innerHTML = '';
-        overlay.appendChild(clonedContent);
-        document.body.style.overflow = 'hidden';
-    };
-
-    overlay.onclick = () => {
-        overlay.remove();
-        document.body.style.overflow = '';
-    };
+            overlay.onclick = () => {
+                overlay.remove();
+                document.body.style.overflow = '';
+            };
+        };
+    });
 }
 
 async function init() {
