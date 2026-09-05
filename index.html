@@ -84,7 +84,7 @@
             border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-        .header-bar h1 { display: flex; align-items: center; gap: 12px; font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; }
+        .header-bar h1 { display: flex; align-items: center; gap: 12px; font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; cursor: pointer; }
         .header-logo { height: 40px; width: auto; object-fit: contain; }
         
         .stat-tag { 
@@ -111,10 +111,89 @@
         .search-bar input:focus { border-color: var(--tech-blue); box-shadow: 0 0 0 3px var(--neon-glow); }
         
         .search-bar button:not(.filter-toggle-btn) {
+            height: 42px;
+            box-sizing: border-box;
             padding: 10px 20px; border-radius: 8px; border: none;
             background: linear-gradient(135deg, var(--tech-blue) 0%, #b300ad 100%);
             color: white; cursor: pointer; font-weight: 600;
             box-shadow: 0 4px 10px rgba(0,86,179,0.3); transition: 0.3s;
+        }
+
+        .search-input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: max-content;
+            max-width: 100%;
+            flex: 0 0 auto;
+        }
+
+        .search-input-group > #search-input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .fuzzy-search-option {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+            padding-left: 2px;
+        }
+
+        .fuzzy-search-option label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .fuzzy-search-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--tech-blue);
+        }
+
+        .fuzzy-search-option {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+            padding-left: 2px;
+        }
+
+        .fuzzy-search-option label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .fuzzy-search-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--tech-blue);
+        }
+
+
+
+        .filter-collapse-panel select,
+        #reset-btn {
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            box-sizing: border-box !important;
         }
 
         .table-container { 
@@ -225,8 +304,9 @@
         }
 
         /* ===== RWD Mobile ===== */
-        .search-bar-row { display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; }
+        .search-bar-row { display: flex; gap: 10px; flex-wrap: nowrap; align-items: flex-start; }
         .filter-collapse-panel { display: flex; gap: 10px; flex-wrap: wrap; }
+        .filter-collapse-panel select { height: 42px; box-sizing: border-box; }
         .filter-toggle-btn {
             display: none;
             padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color);
@@ -282,8 +362,25 @@
 
             .search-bar { flex-direction: column; gap: 8px; margin-bottom: 0; }
             .search-bar-row { width: 100%; }
+            .search-input-group {
+                flex: 1 1 auto;
+                min-width: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+            .search-input-group > #search-input {
+                width: 100%;
+                min-width: 0;
+            }
             .search-bar-row input { flex: 1; min-width: 0; }
             .filter-toggle-btn { display: flex; align-items: center; justify-content: center; }
+            .fuzzy-search-option {
+                margin-top: 2px;
+                padding-left: 2px;
+            }
+            .fuzzy-search-option label {
+                font-size: 0.8rem;
+            }
 
             .filter-collapse-panel {
                 overflow: hidden; max-height: 0;
@@ -318,7 +415,7 @@
 
     <div class="main-content-wrapper">
         <div class="header-bar">
-            <h1 id="ui-main-title">
+            <h1 id="ui-main-title" onclick="window.location.href=window.location.pathname;" title="回到首頁">
                 <img src="TCUMAP/logo.png" alt="Logo" class="header-logo">
                 <span id="ui-main-title-text">校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span></span>
             </h1>
@@ -339,7 +436,15 @@
         <div class="sticky-top-bar">
             <div class="search-bar">
                 <div class="search-bar-row">
-                    <input type="text" id="search-input" placeholder="搜尋關鍵字或編號..." />
+                    <div class="search-input-group">
+                        <input type="text" id="search-input" placeholder="搜尋關鍵字或編號..." />
+                        <div class="fuzzy-search-option">
+                            <label>
+                                <input type="checkbox" id="fuzzy-search-checkbox">
+                                <span>模糊搜尋（可搜尋相近文字、錯字）</span>
+                            </label>
+                        </div>
+                    </div>
                     <button id="filter-toggle-btn" class="filter-toggle-btn" title="篩選">⚙️</button>
                     <button id="search-btn">搜尋空間</button>
                     <button id="reset-btn" style="display:none; background: #32b42d;">RESET</button>
@@ -755,38 +860,170 @@
                     document.getElementById('mobile-cards').addEventListener('click', trackClick);
                 },
 
+                // === 模糊搜尋工具 ===
+                // 支援：
+                // 1. 博雅學堂 → 博雅講堂
+                // 2. 博亞 → 博雅
+                // 3. 博雅 → 博雅講堂
+                fuzzyMatch(text, keyword) {
+                    const source = this.normalizeSearchText(text);
+                    const query = this.normalizeSearchText(keyword);
+
+                    if (!query) return true;
+                    if (!source) return false;
+
+                    // 1. 完全包含：博雅 → 博雅講堂
+                    if (source.includes(query)) return true;
+
+                    // 2. 針對中文短關鍵字，逐一比較來源文字中的「等長片段」
+                    // 例如：
+                    // 博雅學堂 vs 博雅講堂
+                    //        ↑ 只差 1 個字
+                    //
+                    // 博亞 vs 博雅
+                    //   ↑ 只差 1 個字
+                    const queryLength = Array.from(query).length;
+                    const sourceChars = Array.from(source);
+
+                    // 短關鍵字允許 1 個字不同
+                    // 3~4 字的搜尋也允許 1 個字不同
+                    // 5 字以上最多允許約 30% 不同
+                    const maxDistance = queryLength <= 4
+                        ? 1
+                        : Math.max(1, Math.floor(queryLength * 0.3));
+
+                    // 比較等長片段
+                    for (let i = 0; i <= sourceChars.length - queryLength; i++) {
+                        const part = sourceChars.slice(i, i + queryLength).join('');
+                        if (this.levenshteinDistance(part, query) <= maxDistance) {
+                            return true;
+                        }
+                    }
+
+                    // 3. 允許來源文字比搜尋文字多或少 1~數個字
+                    // 例如搜尋「博雅學堂」也可比對名稱中相近的片段
+                    const minLength = Math.max(1, queryLength - maxDistance);
+                    const maxLength = queryLength + maxDistance;
+
+                    for (let len = minLength; len <= maxLength; len++) {
+                        for (let i = 0; i <= sourceChars.length - len; i++) {
+                            const part = sourceChars.slice(i, i + len).join('');
+                            if (this.levenshteinDistance(part, query) <= maxDistance) {
+                                return true;
+                            }
+                        }
+                    }
+
+                    return false;
+                },
+
+                normalizeSearchText(text) {
+                    return String(text ?? '')
+                        .normalize('NFKC')
+                        .trim()
+                        .toLowerCase()
+                        .replace(/\s+/g, '');
+                },
+
+                levenshteinDistance(a, b) {
+                    const aChars = Array.from(a);
+                    const bChars = Array.from(b);
+                    const prev = Array.from({ length: aChars.length + 1 }, (_, i) => i);
+
+                    for (let i = 1; i <= bChars.length; i++) {
+                        const curr = [i];
+
+                        for (let j = 1; j <= aChars.length; j++) {
+                            const cost = bChars[i - 1] === aChars[j - 1] ? 0 : 1;
+
+                            curr[j] = Math.min(
+                                curr[j - 1] + 1,
+                                prev[j] + 1,
+                                prev[j - 1] + cost
+                            );
+                        }
+
+                        prev.splice(0, prev.length, ...curr);
+                    }
+
+                    return prev[aChars.length];
+                },
+
                 async fetchData(kw = "", hID = null) {
-                    // 新增:只記錄使用者主動搜尋,初始載入不記
                     if (kw && kw.trim()) {
                         this.logActivity('SEARCH', `關鍵字: ${kw.trim()}`);
                     }
 
                     const camp = document.getElementById('campus-filter').value;
                     const bld = document.getElementById('building-filter').value;
-                    let q = this.supabase.from("TblSpace").select('*');
-                    
-                    if (kw) q = q.or(`SpaceName.ilike.%${kw}%,SpaceNo.ilike.%${kw}%`);
-                    
-                    if (camp) q = q.eq('CampusNo', camp);
-                    
-                    if (bld) {
-                        if (bld === 'other') {
-                            // --- 修改這裡：根據新名單調整「其他」所排除的條件 ---
-                            let excludeList = [];
-                            if (camp === '1') excludeList = ['A','B','C','D','E','F','H','T'];
-                            else if (camp === '2') excludeList = ['A','B','C','D','E','G','2A','2B','2C','2D','2E','2G'];
-                            else if (camp === '3') excludeList = ['A','B','C','D','E','F','G','H','I','J','K','Lib'];
-                            
-                            if (excludeList.length > 0) {
-                                q = q.not('BuildingNo', 'in', `(${excludeList.join(',')})`);
+
+                    // 重要：Supabase 預設最多只回傳 1000 筆資料。
+                    // 如果只使用 .limit(1000)，搜尋資料可能根本沒有被載入，
+                    // 因此即使模糊搜尋正確，也永遠找不到。
+                    // 這裡改成分頁讀取所有資料，再進行前端模糊比對。
+                    let allRows = [];
+                    let from = 0;
+                    const pageSize = 1000;
+
+                    try {
+                        while (true) {
+                            let q = this.supabase.from("TblSpace").select('*');
+
+                            if (camp) q = q.eq('CampusNo', camp);
+
+                            if (bld) {
+                                if (bld === 'other') {
+                                    let excludeList = [];
+                                    if (camp === '1') excludeList = ['A','B','C','D','E','F','H','T'];
+                                    else if (camp === '2') excludeList = ['A','B','C','D','E','G','2A','2B','2C','2D','2E','2G'];
+                                    else if (camp === '3') excludeList = ['A','B','C','D','E','F','G','H','I','J','K','Lib'];
+
+                                    if (excludeList.length > 0) {
+                                        q = q.not('BuildingNo', 'in', `(${excludeList.join(',')})`);
+                                    }
+                                } else {
+                                    q = q.or(`BuildingNo.eq.${bld},BuildingNo.eq.2${bld}`);
+                                }
                             }
-                        } else {
-                            q = q.or(`BuildingNo.eq.${bld},BuildingNo.eq.2${bld}`);
+
+                            const { data, error } = await q.range(from, from + pageSize - 1);
+
+                            if (error) throw error;
+
+                            const page = data || [];
+                            allRows.push(...page);
+
+                            if (page.length < pageSize) break;
+                            from += pageSize;
                         }
+
+                        let rows = allRows;
+
+                        if (kw && kw.trim()) {
+                            const keyword = kw.trim();
+                            const fuzzyEnabled = document.getElementById("fuzzy-search-checkbox")?.checked;
+
+                            if (fuzzyEnabled) {
+                                rows = rows.filter(row =>
+                                    this.fuzzyMatch(row.SpaceName, keyword) ||
+                                    this.fuzzyMatch(row.SpaceNo, keyword)
+                                );
+                            } else {
+                                const k = keyword.toLowerCase();
+                                rows = rows.filter(row =>
+                                    String(row.SpaceName || "").toLowerCase().includes(k) ||
+                                    String(row.SpaceNo || "").toLowerCase().includes(k)
+                                );
+                            }
+                        }
+
+                        this.currentData = rows;
+
+                    } catch (error) {
+                        console.error('資料讀取失敗:', error);
+                        this.currentData = [];
                     }
 
-                    const { data } = await q.limit(1000);
-                    this.currentData = data || [];
                     if (hID) this.highlightID = String(hID);
                     this.sortAndRender();
                 },
