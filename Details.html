@@ -143,6 +143,7 @@ h1 {
     100% { transform: translate(-50%, -50%) scale(3.8); opacity: 0; }
 }
 .marker-label {
+    display:none;
     position: absolute;
     background-color: rgba(255, 48, 48, 0.95);
     color: #ffffff;
@@ -331,7 +332,7 @@ function switchView(mode) {
     const rawBld = String(globalData.BuildingNo || "").toUpperCase();
 
     if (String(globalData.CampusNo) === '1') {
-        const valid=['A','B','C','D','E','F','G','T'];
+        const valid=['A','B','C','D','E','F','G','H','L','T'];
         if(valid.includes(rawBld)) campusPic=`1${rawBld}pic`;
     } else if(String(globalData.CampusNo)==='2') {
         const clean=rawBld.replace(/^2/,'');
